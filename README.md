@@ -140,4 +140,4 @@ A Windows desktop application used to:
 - PID gains sent over serial take effect immediately with no bumpless-transfer handling
 
 ## Contribution
-Contributions are welcome! Please feel free to submit issues or pull requests.
+*Contributions are welcome! Please feel free to submit issues or pull requests.*
