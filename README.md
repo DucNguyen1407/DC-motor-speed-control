@@ -22,7 +22,8 @@ A closed-loop DC motor speed control system built on **Arduino**, using **quadra
 ### Closed-Loop Control Block Diagram
 <!-- Image 1: System Block Diagram -->
 <p align="center">
-  <img src="images/system_block_diagram.png" alt="System Block Diagram" width="80%">
+  <<img width="2930" height="1210" alt="image" src="https://github.com/user-attachments/assets/186d56f9-7fa2-497f-a96f-1c48ce154873" />
+>
   <br>
   <em>Figure 1: Closed-loop control block diagram (Setpoint, Arduino PID Controller, L298 Actuator, DC Motor Plant, and Quadrature Encoder Feedback).</em>
 </p>
