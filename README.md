@@ -4,7 +4,7 @@ A closed-loop DC motor speed control system built on **Arduino**, using **quadra
 
 ---
 
-## Overview
+## 1. System Architecture & Block Diagram
 
 ```
 ┌─────────────────┐        Serial (9600 baud)        ┌──────────────────────┐
@@ -15,129 +15,156 @@ A closed-loop DC motor speed control system built on **Arduino**, using **quadra
                                                        ┌─────────┴─────────┐
                                                        │   L298 Driver +   │
                                                        │  DC Motor+Encoder │
+                                                       │  + 24V Power Rail │
                                                        └───────────────────┘
 ```
 
+### Closed-Loop Control Block Diagram
+<!-- Image 1: System Block Diagram -->
+<p align="center">
+  <img src="images/system_block_diagram.png" alt="System Block Diagram" width="80%">
+  <br>
+  <em>Figure 1: Closed-loop control block diagram (Setpoint, Arduino PID Controller, L298 Actuator, DC Motor Plant, and Quadrature Encoder Feedback).</em>
+</p>
 
 ---
 
-## Features
+## 2. Features
 
-- Real-time closed-loop RPM control using a quadrature encoder for speed feedback
-- PID control with derivative-on-measurement (no derivative kick) and integral clamping anti-windup
-- Soft-start setpoint ramping (trajectory generation) to limit acceleration
-- Low-pass filtering of the measured speed signal to reduce encoder noise
-- Bidirectional motor drive (forward/reverse) via an L298 H-bridge driver
-- Serial communication protocol for live setpoint and PID gain updates from a PC
-- C# HMI application for setpoint control, live PID tuning, and telemetry plotting
-- Proteus simulation project for circuit validation
+- **Real-time Closed-Loop Speed Control:** Precise RPM tracking using a 360 PPR incremental encoder.
+- **Enhanced PID Controller:**
+  - *Derivative-on-Measurement:* Prevents sudden derivative kicks upon setpoint steps.
+  - *Clamping Anti-Windup:* Prevents integral saturation during large transitions or high loads.
+- **Soft-Start Setpoint Ramping:** Trajectory generation limits instantaneous acceleration (100 RPM/s).
+- **Low-Pass Filtering (LPF):** Digital filtering on the raw feedback signal reduces encoder quantization noise.
+- **Bidirectional Control:** Forward and reverse motor drive using the L298 H-Bridge driver.
+- **Dynamic Serial Communication:** Update Setpoint, $K_p$, $K_i$, and $K_d$ parameters on-the-fly without firmware re-flashing.
+- **C# Telemetry & HMI Application:** Real-time parameter tuning and dynamic response plotting.
+- **Proteus Circuit Simulation:** Full circuit schematic validation before hardware deployment.
 
 ---
 
-## Hardware
+## 3. Hardware & Circuit Schematic
 
-| Component | Details |
-|-----------|---------|
-| MCU | Arduino (ATmega-based board) |
-| Motor driver | L298 H-bridge |
-| Motor | DC motor with quadrature encoder |
-| Feedback | Incremental encoder (360 pulses/revolution) |
+| Component | Specification |
+|-----------|---------------|
+| **MCU** | Arduino Uno (ATmega328P) |
+| **Actuator (Driver)** | L298N Dual H-Bridge Motor Driver |
+| **Plant (Motor)** | 24V DC Geared Motor |
+| **Sensor (Feedback)** | Incremental Quadrature Optical/Magnetic Encoder (360 pulses/rev) |
+| **Power Supply** | 24V DC (Motor Power) & 5V DC (Logic Power) |
 
 ### Pin Configuration
 
-| Signal | Pin |
-|--------|-----|
-| Encoder A (interrupt) | D2 |
-| Encoder B | D4 |
-| Motor driver IN1 | A1 |
-| Motor driver IN2 | A0 |
-| Motor driver ENA (PWM) | D3 |
+| Signal Name | Arduino Pin | Description |
+|:---|:---:|:---|
+| **Encoder Channel A** | `D2` | External Hardware Interrupt (`INT0`, RISING edge) |
+| **Encoder Channel B** | `D4` | Direction phase detection |
+| **Driver IN1** | `A1` | Direction logic pin 1 |
+| **Driver IN2** | `A0` | Direction logic pin 2 |
+| **Driver ENA** | `D3` | Motor speed control via Timer PWM output |
+| **Serial RX / TX** | `D0` / `D1` | Serial UART communication with PC / COMPIM |
 
-> Pin assignments are defined at the top of the firmware and can be changed freely.
+### Proteus Circuit Simulation
+<!-- Image 2: Proteus Hardware Schematic -->
+<p align="center">
+  <img src="images/proteus_schematic.png" alt="Proteus Circuit Schematic" width="85%">
+  <br>
+  <em>Figure 2: Complete hardware schematic simulated in Proteus (Arduino UNO, COMPIM module, L298 Driver, and DC Motor with Encoder).</em>
+</p>
 
 ---
 
-## Firmware
+## 4. Firmware & Control Loop
 
-### Requirements
+### Uploading Firmware
+1. Open [`codetest.ino`](codetest.ino) in the Arduino IDE.
+2. Select **Arduino Uno** and the corresponding COM port.
+3. Compile and upload to the microcontroller board.
 
-- Arduino IDE
-- `LiquidCrystal` library (for optional LCD display support)
+### Serial Protocol (9600 Baud)
 
-### Upload
+* **PC (C# HMI) $\rightarrow$ Arduino** (Setpoint & PID parameters, newline-terminated):
+  ```text
+  targetSetpoint;Kp;Ki;Kd\n
+  ```
+* **Arduino $\rightarrow$ PC (C# HMI)** (Telemetry data sent every 20 ms cycle):
+  ```text
+  currentSetpoint,PV\n
+  ```
 
-1. Open the `.ino` sketch in the Arduino IDE.
-2. Select the correct board and COM port.
-3. Compile and upload.
-
-### Serial Protocol
-
-**PC → Arduino** (setpoint + gains, newline-terminated):
-
-```
-targetSetpoint;Kp;Ki;Kd
-```
-
-**Arduino → PC** (telemetry, sent every control cycle):
-
-```
-currentSetpoint,PV
-```
-
-Baud rate: **9600**.
-
-### Control Loop Design
+### Control Loop Structure
 
 ```
 setup()
-  ├── configure motor + encoder pins
+  ├── Configure GPIOs (IN1, IN2, ENA, Encoder pins)
+  ├── Initialize L298 in STOP mode
   └── attachInterrupt(ENCODER_PIN_A, countPulse, RISING)
 
-loop()  — every 20 ms:
-  ├── A. Ramp current setpoint toward target setpoint
-  ├── B. Read encoder pulse count → compute raw RPM → low-pass filter
-  ├── C. PID computation (P + clamped-anti-windup I + derivative-on-measurement D)
-  ├── D. Drive motor via L298 (direction + PWM magnitude)
-  └── E. Send telemetry over Serial
-
-countPulse() (ISR, on encoder edge)
-  └── increments/decrements pulse count based on encoder phase
+loop()  — Executes every T = 20 ms:
+  ├── 1. Read & parse any incoming Serial commands (targetSetpoint, Kp, Ki, Kd)
+  ├── 2. Trajectory generator: ramp currentSetpoint towards targetSetpoint
+  ├── 3. Safely read & reset encoder pulses (atomic access)
+  ├── 4. Calculate raw RPM and apply Low-Pass Filter (PV)
+  ├── 5. Compute PID output with Anti-Windup and Derivative-on-Measurement
+  ├── 6. Set L298 bridge direction (IN1, IN2) and PWM level (ENA)
+  └── 7. Transmit currentSetpoint and PV over Serial for real-time plotting
 ```
 
-### PID Tuning
+---
 
-Default gains (overridable live from the HMI):
+## 5. Experimental Results & Telemetry (C# HMI)
 
-| Gain | Role |
-|------|------|
-| `Kp` | Proportional |
-| `Ki` | Integral |
-| `Kd` | Derivative |
+Real-time speed response curves and telemetry captured directly from the C# HMI application:
 
-Anti-windup: the integral term only accumulates when the controller output is not saturated at the PWM limits, preventing integral windup during large setpoint changes.
+<!-- Image 3: C# Response 1 -->
+<p align="center">
+  <img src="images/hmi_response_1.png" alt="HMI Response 1" width="80%">
+  <br>
+  <em>Figure 3: Real-time motor speed response captured from the C# HMI application (Sample 1).</em>
+</p>
+
+<!-- Image 4: C# Response 2 -->
+<p align="center">
+  <img src="images/hmi_response_2.png" alt="HMI Response 2" width="80%">
+  <br>
+  <em>Figure 4: Real-time motor speed response captured from the C# HMI application (Sample 2).</em>
+</p>
+
+<!-- Image 5: C# Response 3 -->
+<p align="center">
+  <img src="images/hmi_response_3.png" alt="HMI Response 3" width="80%">
+  <br>
+  <em>Figure 5: Real-time motor speed response captured from the C# HMI application (Sample 3).</em>
+</p>
 
 ---
 
-## HMI (C# Application)
+## 6. Project Structure
 
-A Windows desktop application used to:
-- Connect to the Arduino over serial
-- Send target RPM and PID gains
-- Plot real-time setpoint vs. measured speed (PV)
+```text
+├── codetest.ino         # Arduino PID firmware source code
+├── dktocdocdc.pdsprj    # Proteus circuit simulation design file
+├── README.md            # Project documentation and specifications
+├── hmi/                 # C# Windows Forms HMI application project
+└── images/              # Images for documentation
+    ├── system_block_diagram.png
+    ├── proteus_schematic.png
+    ├── hmi_response_1.png
+    ├── hmi_response_2.png
+    └── hmi_response_3.png
+```
 
 ---
 
-## Simulation
+## 7. Known Limitations
 
-`dktocdocdc.pdsprj` — a **Proteus** project containing the schematic (microcontroller, L298 driver, DC motor, and encoder) for simulating and validating the control circuit before deploying to real hardware.
+- **Encoder Resolution:** At very low RPM (< 50 RPM), the 360 PPR resolution may introduce slight speed calculation quantization error.
+- **Telemetry Coupling:** Telemetry transmission frequency is tied to the 20 ms control loop execution period.
+- **Bumpless Parameter Transfer:** In-flight gain changes take effect immediately without integral state re-initialization.
 
 ---
 
-## Known Limitations
+## 8. License & Contribution
 
-- Encoder resolution (360 pulses/rev) limits low-speed measurement accuracy
-- Serial telemetry rate is tied to the 20 ms control loop period
-- PID gains sent over serial take effect immediately with no bumpless-transfer handling
-
-## Contribution
-*Contributions are welcome! Please feel free to submit issues or pull requests.*
+Contributions, issues, and feature requests are welcome! Feel free to submit a pull request or file an issue.
