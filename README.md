@@ -68,7 +68,7 @@ A closed-loop DC motor speed control system built on **Arduino**, using **quadra
 ### Proteus Circuit Simulation
 <!-- Image 2: Proteus Hardware Schematic -->
 <p align="center">
-  <img src="images/proteus_schematic.png" alt="Proteus Circuit Schematic" width="85%">
+  <img width="1960" height="1378" alt="image" src="https://github.com/user-attachments/assets/9c40dc9e-7a35-41e0-80a8-f24f9bfcfc92" />
   <br>
   <em>Figure 2: Complete hardware schematic simulated in Proteus (Arduino UNO, COMPIM module, L298 Driver, and DC Motor with Encoder).</em>
 </p>
@@ -119,21 +119,21 @@ Real-time speed response curves and telemetry captured directly from the C# HMI 
 
 <!-- Image 3: C# Response 1 -->
 <p align="center">
-  <img src="images/hmi_response_1.png" alt="HMI Response 1" width="80%">
+  <img width="2422" height="1481" alt="image" src="https://github.com/user-attachments/assets/84203583-1539-40d7-a286-da5b9b622d52" />
   <br>
   <em>Figure 3: Real-time motor speed response captured from the C# HMI application (Sample 1).</em>
 </p>
 
 <!-- Image 4: C# Response 2 -->
 <p align="center">
-  <img src="images/hmi_response_2.png" alt="HMI Response 2" width="80%">
+  <img width="2422" height="1481" alt="image" src="https://github.com/user-attachments/assets/50c6e5d6-cc88-4024-b89d-0cb01cfd661e" />
   <br>
   <em>Figure 4: Real-time motor speed response captured from the C# HMI application (Sample 2).</em>
 </p>
 
 <!-- Image 5: C# Response 3 -->
 <p align="center">
-  <img src="images/hmi_response_3.png" alt="HMI Response 3" width="80%">
+  <img width="2436" height="1480" alt="image" src="https://github.com/user-attachments/assets/16bde618-c9ac-4e23-8925-8978a517ab44" />
   <br>
   <em>Figure 5: Real-time motor speed response captured from the C# HMI application (Sample 3).</em>
 </p>
